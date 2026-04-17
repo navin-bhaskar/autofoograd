@@ -33,7 +33,7 @@ class Value:
         return out
     
     def __repr__(self):
-        return f"op: {self._op}, val: {self.data}"
+        return f"op: {self._op}, val: {self.data}, grad: {self.grad}"
     
 
 def trace(root):
