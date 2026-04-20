@@ -24,6 +24,7 @@ class Tensor:
         out = Tensor(self.data + other.data, (self, other), _op="+", label="+")
 
         def _backward():
+            # TODO: Revisitt for proper broadcast
             self.grad += Tensor._match_shape(out.grad, self.data.shape)
             other.grad += Tensor._match_shape(out.grad, other.data.shape)
             
@@ -38,6 +39,7 @@ class Tensor:
         out = Tensor(self.data * other.data, (self, other), _op="*", label="*")
 
         def _backward():
+            # TODO: Revisitt for proper broadcast
             self_contrib = other.data * out.grad
             other_contib = self.data * out.grad
 
