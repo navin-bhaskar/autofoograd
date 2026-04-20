@@ -33,9 +33,16 @@ class Tensor:
         return out
     
     def __sub__(self, other):
-        if not isinstance(other, Tensor):
-            other = Tensor(other)
-        return self + (-1*other)
+        other = other if isinstance(other, Tensor) else Tensor(other)
+
+        out = Tensor(self.data - other.data, (self, other), '-')
+
+        def _backward():
+            self.grad += Tensor._match_shape(out.grad, self.data.shape)
+            other.grad -= Tensor._match_shape(out.grad, other.data.shape)
+
+        out._backward = _backward
+        return out
     
     def __mul__(self, other):
         if not isinstance(other, Tensor):
@@ -50,6 +57,24 @@ class Tensor:
 
             self.grad += Tensor._match_shape(self_contrib, self.data.shape)
             other.grad += Tensor._match_shape(other_contib, other.data.shape)
+
+        out._backward = _backward
+        return out
+    
+    def relu(self):
+        out = Tensor(np.maximum(0, self.data), (self,), _op="relu")
+
+        def _backward():
+            self.grad += (self.data > 0) * out.grad
+
+        out._backward = _backward
+        return out
+
+    def sum(self):
+        out = Tensor(self.data.sum(), (self,), 'sum')
+
+        def _backward():
+            self.grad += np.ones_like(self.data) * out.grad
 
         out._backward = _backward
         return out
