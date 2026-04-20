@@ -143,6 +143,11 @@ class Value:
         """Builds topology and then computes the backwards gradient"""
         topo = self.build_topology()
 
+        
+        # reset grads
+        for node in topo:
+            node.grad = 0.0
+
         self.grad = 1.0 # seed gradient
 
         # start from this node which would appear at the very last of the topo array

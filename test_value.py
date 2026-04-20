@@ -76,5 +76,14 @@ class TestValue(unittest.TestCase):
         self.assertEqual(a.grad, 1.0)
         self.assertEqual(b.grad, -1.0)
 
+    def test_self_interaction(self):
+        a = Value(3.0)
+        
+        c = a * a
+        c.backward()
+
+        self.assertEqual(a.grad, 6)
+
+
 
 
