@@ -32,6 +32,11 @@ class Tensor:
         out._backward = _backward
         return out
     
+    def __sub__(self, other):
+        if not isinstance(other, Tensor):
+            other = Tensor(other)
+        return self + (-1*other)
+    
     def __mul__(self, other):
         if not isinstance(other, Tensor):
             other = Tensor(other)
@@ -49,6 +54,15 @@ class Tensor:
         out._backward = _backward
         return out
     
+    def matmul(self, other):
+        out = Tensor(self.data @ other.data, (self, other), _op="matmul", label="matmul")
+
+        def _backward():
+            self.grad += out.grad @ other.data.T
+            other.grad += self.data.T @ out.grad
+
+        out._backward = _backward
+        return out
 
     def _topo_sort(self):
         topo_sorted = []
