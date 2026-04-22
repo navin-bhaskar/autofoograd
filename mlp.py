@@ -1,5 +1,9 @@
+import numpy as np
+
 from linear import Linear
 from tensor import Tensor
+from sgd import SGD
+from sgd_momentum import SGDWithMomentum
 
 class MLP:
 
@@ -9,14 +13,16 @@ class MLP:
 
     def __call__(self, x):
         x = self.l1(x)
-        print("l1 output:", x.data)
         x = x.relu()
-        print("after relu:", x.data)
         x = self.l2(x)
         return x
     
     def parameters(self):
         return self.l1.parameters() + self.l2.parameters()
+    
+    def zero_grad(self):
+        for p in self.parameters():
+            p.grad = np.zeros_like(p.grad)
     
 
 def mse(pred, target):
@@ -25,55 +31,29 @@ def mse(pred, target):
 
 
 def main():
-    model = MLP()
-
-    x = Tensor([[1.0, 2.0]])
-    y = Tensor([[1.0]])
-
-    # forward
-    pred = model(x)
-
-    # loss
-    loss = mse(pred, y)
-
-    # backward
-    loss.backward()
-
-    lr = 0.01
-
-    for p in model.parameters():
-        p.data -= lr * p.grad
-
-    for _ in range(100):
-        pred = model(x)
-        loss = mse(pred, y)
-
-        loss.backward()
-
-        for p in model.parameters():
-            p.data -= 0.01 * p.grad
-            p.grad = 0 * p.grad
+    model_with_sgd = MLP()
+    model_with_sgd_momentunm = MLP()
 
     x = Tensor([[1.0, 2.0]])
     y = Tensor([[10.0]])
 
-    model = MLP()
+    optimizer_sgd = SGD(model_with_sgd.parameters())
+    optimizer_sgd_momentum = SGDWithMomentum(model_with_sgd_momentunm.parameters(), lr=0.001, beta=0.8)
 
-    for _ in range(50):
-        pred = model(x)
-        loss = mse(pred, y)
+    for step in range(50):
+        pred_with_sgd = model_with_sgd(x)
+        loss_with_sgd = mse(pred_with_sgd, y)
 
-        loss.backward()
+        loss_with_sgd.backward()
+        optimizer_sgd.step()
+        
+        pred_with_sgd_momentum = model_with_sgd_momentunm(x)
+        loss_with_sgd_momentum = mse(pred_with_sgd_momentum, y)
 
-        print("The grad on model")
-        for p in model.parameters():
-            print(p.grad)
+        loss_with_sgd_momentum.backward()
+        optimizer_sgd_momentum.step()
 
-        for p in model.parameters():
-            p.data -= 0.01 * p.grad
-            p.grad = 0 * p.grad
-
-        print(loss.data)
+        print(f"step {step}: SGD loss: {loss_with_sgd.data} SGD momentum loss: {loss_with_sgd_momentum.data}")
 
 
 if __name__ == "__main__":

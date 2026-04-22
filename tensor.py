@@ -65,7 +65,7 @@ class Tensor:
         out = Tensor(np.maximum(0, self.data), (self,), _op="relu")
 
         def _backward():
-            self.grad += (self.data > 0) * out.grad
+            self.grad += (out.data > 0).astype(float) * out.grad
 
         out._backward = _backward
         return out
