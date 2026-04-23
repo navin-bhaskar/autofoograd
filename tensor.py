@@ -1,5 +1,7 @@
 import numpy as np
 
+from utils import unbroadcast
+
 class Tensor:
     def __init__(self, data, _children=(), _op="", label=""):
         self.data = np.array(data, dtype=float)
@@ -88,7 +90,74 @@ class Tensor:
 
         out._backward = _backward
         return out
+    
+    def log(self):
+        out = Tensor(np.log(self.data), (self,), 'log')
 
+        def _backward():
+            self.grad += (1/self.data) * out.grad
+
+        out._backward = _backward
+        return out
+
+    def exp(self):
+        out = Tensor(np.exp(self.data), (self,), 'exp')
+
+        def _backward():
+            self.grad += out.data * out.grad
+
+        out._backward = _backward
+        return out
+    
+    def mean(self):
+        out = Tensor(np.mean(self.data), (self,), 'mean')
+
+        def _backward():
+            self.grad += (1/self.data.size) * out.grad
+
+        out._backward = _backward
+        return out
+    
+    def sum(self, axis=None, keepdims=False):
+        out = Tensor(np.sum(self.data, axis=axis, keepdims=keepdims), (self,), "sum")
+
+        def _backward():
+            grad = out.grad
+
+            if axis is not None and not keepdims:
+                axes = axis if isinstance(axis, tuple) else (axis,)
+                for ax in sorted(axes):
+                    grad = np.expand_dims(grad, ax)
+
+            self.grad += np.broadcast_to(grad, self.data.shape)
+
+        out._backward = _backward
+        return out
+    
+    def __truediv__(self, other):
+        other = other if isinstance(other, Tensor) else Tensor(other)
+
+        out = Tensor(self.data / other.data, (self, other), '/')
+
+        def _backward():
+            grad_self = (1 / other.data) * out.grad
+            grad_other = (-self.data / (other.data ** 2)) * out.grad
+
+            self.grad += unbroadcast(grad_self, self.data.shape)
+            other.grad += unbroadcast(grad_other, other.data.shape)
+
+        out._backward = _backward
+        return out
+    
+    def __neg__(self):
+        out = Tensor(-self.data, (self,), 'neg')
+
+        def _backward():
+            self.grad += -1 * out.grad
+
+        out._backward = _backward
+        return out
+    
     def _topo_sort(self):
         topo_sorted = []
         visited = set()

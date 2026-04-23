@@ -7,9 +7,11 @@ from sgd_momentum import SGDWithMomentum
 
 class MLP:
 
-    def __init__(self):
-        self.l1 = Linear(2, 3)
-        self.l2 = Linear(3, 1)
+    def __init__(self, num_classes=2, hidden=4):
+        self.l1 = Linear(2, hidden)
+        # num_classes -> number of classes to classify in output
+        # hidden -> hidden layers out
+        self.l2 = Linear(hidden, num_classes)
 
     def __call__(self, x):
         x = self.l1(x)
@@ -30,30 +32,42 @@ def mse(pred, target):
     return (diff * diff).sum()
 
 
+def softmax(x):
+    shifted = x - x.data.max(axis=1, keepdims=True)
+    exps = shifted.exp()
+    return exps / exps.sum(axis=1, keepdims=True)
+
+def cross_entropy(pred, target):
+    log_preds = pred.log()
+    loss = -(target * log_preds).sum(axis=1)
+    return loss.mean()
+
 def main():
-    model_with_sgd = MLP()
-    model_with_sgd_momentunm = MLP()
+    model = MLP()
+   
+    x = Tensor([[1.0, 2.0, 3.0]])
+    y = x.sum()
+    y.backward()
+
+    print(x.grad)  # should be all 1s
 
     x = Tensor([[1.0, 2.0]])
-    y = Tensor([[10.0]])
+    y = Tensor([[0.0, 1.0]])  # class 1 (one-hot)
 
-    optimizer_sgd = SGD(model_with_sgd.parameters())
-    optimizer_sgd_momentum = SGDWithMomentum(model_with_sgd_momentunm.parameters(), lr=0.001, beta=0.8)
+    optimizer = SGD(model.parameters())
 
-    for step in range(50):
-        pred_with_sgd = model_with_sgd(x)
-        loss_with_sgd = mse(pred_with_sgd, y)
+    for step in range(100):
+        logits = model(x)
+        probs = softmax(logits)
 
-        loss_with_sgd.backward()
-        optimizer_sgd.step()
-        
-        pred_with_sgd_momentum = model_with_sgd_momentunm(x)
-        loss_with_sgd_momentum = mse(pred_with_sgd_momentum, y)
+        loss = cross_entropy(probs, y)
 
-        loss_with_sgd_momentum.backward()
-        optimizer_sgd_momentum.step()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
-        print(f"step {step}: SGD loss: {loss_with_sgd.data} SGD momentum loss: {loss_with_sgd_momentum.data}")
+        print(step, loss.data)
+    print(probs.data)
 
 
 if __name__ == "__main__":
