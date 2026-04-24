@@ -1,14 +1,16 @@
 import numpy as np
+import matplotlib.pyplot as plt
 
 from linear import Linear
 from tensor import Tensor
 from sgd import SGD
 from sgd_momentum import SGDWithMomentum
+from adam import ADAM
 
 class MLP:
 
-    def __init__(self, num_classes=2, hidden=4):
-        self.l1 = Linear(2, hidden)
+    def __init__(self, inp=2, num_classes=2, hidden=4):
+        self.l1 = Linear(inp, hidden)
         # num_classes -> number of classes to classify in output
         # hidden -> hidden layers out
         self.l2 = Linear(hidden, num_classes)
@@ -43,31 +45,58 @@ def cross_entropy(pred, target):
     return loss.mean()
 
 def main():
-    model = MLP()
-   
-    x = Tensor([[1.0, 2.0, 3.0]])
-    y = x.sum()
-    y.backward()
+    model = MLP(10)
+    initial_params = [p.data.copy() for p in model.parameters()]
 
-    print(x.grad)  # should be all 1s
-
-    x = Tensor([[1.0, 2.0]])
+    x = Tensor(np.random.randn(100, 10))
     y = Tensor([[0.0, 1.0]])  # class 1 (one-hot)
 
-    optimizer = SGD(model.parameters())
+    optimizers = [
+        ('SGD', SGD(model.parameters(), lr=0.1)),
+        ('SGDWithMomentum', SGDWithMomentum(model.parameters(), lr=0.01, beta=0.9)),
+        ('ADAM', ADAM(model.parameters(), lr=0.01))
+    ]
 
-    for step in range(100):
-        logits = model(x)
-        probs = softmax(logits)
+    results = {}
+    for name, optimizer in optimizers:
+        # reset params
+        for i, p in enumerate(model.parameters()):
+            p.data = initial_params[i].copy()
+        # reset grads
+        model.zero_grad()
 
-        loss = cross_entropy(probs, y)
+        losses = []
+        for step in range(100):
+            optimizer.zero_grad()
+            logits = model(x)
+            probs = softmax(logits)
+            loss = cross_entropy(probs, y)
+            losses.append(loss.data)
+            loss.backward()
+            optimizer.step()
 
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+        results[name] = losses
+        print(f"{name} final loss: {losses[-1]:.4f}")
 
-        print(step, loss.data)
-    print(probs.data)
+    # Print losses at every 10 steps for comparison
+    print("\nLoss convergence comparison:")
+    print("Step\tSGD\t\tMomentum\tADAM")
+    for step in range(0, 100, 10):
+        sgd_loss = results['SGD'][step]
+        mom_loss = results['SGDWithMomentum'][step]
+        adam_loss = results['ADAM'][step]
+        print(f"{step}\t{sgd_loss:.4f}\t{mom_loss:.4f}\t{adam_loss:.4f}")
+
+    # Plot the loss convergence
+    plt.figure(figsize=(10, 6))
+    for name, losses in results.items():
+        plt.plot(losses, label=name)
+    plt.xlabel('Step')
+    plt.ylabel('Loss')
+    plt.title('Optimizer Loss Convergence Comparison')
+    plt.legend()
+    plt.savefig('optimizer_comparison.png')
+    print("\nPlot saved as 'optimizer_comparison.png'")
 
 
 if __name__ == "__main__":
