@@ -188,6 +188,49 @@ class Tensor:
         for node in reversed(topo_sorted):
             node._backward()
 
+    def is_constant(self):
+        # Check if this is a leaf node, does not come from anything else
+        return len(self._prev) == 0
+
+def constant_fold(node):
+    """This function will perform constant fold.
+    The idea is, we find all nodes with constant value and see if we can
+    simplify it. so if we have an expression like this: 'a + 2*3' then at compile time,
+    we know that 2*3 simplifies to 6 which means that 2*3 can be replaced with a node 
+    that has data as 6
+    """
+    visited = set()
+
+    def dfs(cur_node):
+        if cur_node in visited:
+            # Node already seen 
+            return cur_node
+        
+        visited.add(cur_node)
+
+        # Visit all children first and see if we can optimize that first
+        new_children = []
+        for child in cur_node._prev:
+            new_children.append(dfs(child))
+
+        cur_node._prev = tuple(new_children)
+
+        if cur_node._prev:
+            # all are constants?
+            if all(child.is_constant() for child in cur_node._prev):
+                values = [child.data for child in cur_node._prev]
+                if cur_node._op == '+':
+                    new_val = values[0] + values[1]
+                elif cur_node._op == '*':
+                    new_val = values[0] * values[1]
+                else:
+                    return cur_node
+                return Tensor(new_val)
+            
+        return cur_node
+    
+    return dfs(node)
+
 
 def main():
     a = Tensor([2.0, 3.0])
@@ -208,6 +251,16 @@ def main():
 
     print(a.grad)  # expect: [2, 2, 2]
     print(b.grad)  # expect: 1+2+3 = 6
+
+    a = Tensor(2.0)
+    b = Tensor(3.0)
+    c = Tensor(4.0)
+
+    d = a * b + c  # (2*3) + 4 = 10
+
+    optimized = constant_fold(d)
+
+    print(optimized.data)  # should be 10
 
 if __name__ == "__main__":
     main()

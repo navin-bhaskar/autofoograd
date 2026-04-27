@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from tensor import Tensor
+from tensor import Tensor, constant_fold
 
 class TestTensor(TestCase):
 
@@ -91,4 +91,13 @@ class TestTensor(TestCase):
         assert (a.grad == [1.0]).all()
         assert b.grad == 1.0
 
-    
+    def test_constant_fold(self):
+        a = Tensor(2.0)
+        b = Tensor(3.0)
+        c = Tensor(4.0)
+
+        d = a * b + c  # (2*3) + 4 = 10
+
+        optimized = constant_fold(d)
+
+        assert optimized.data == 10
