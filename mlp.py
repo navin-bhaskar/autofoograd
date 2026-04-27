@@ -44,6 +44,25 @@ def cross_entropy(pred, target):
     loss = -(target * log_preds).sum(axis=1)
     return loss.mean()
 
+def get_batches(X, Y, batch_size):
+    for i in range(0, len(X), batch_size):
+        yield X[i:i+batch_size], Y[i:i+batch_size]
+
+
+def train_model(model, X, Y, optimizer, epochs, batch_size=4):
+    for _ in range(epochs):
+        for xb, yb in get_batches(X, Y, batch_size=batch_size):
+            xb = Tensor(xb)
+            yb = Tensor(yb)
+
+            logits = model(xb)
+            probs = softmax(logits)
+            loss = cross_entropy(probs, yb)
+
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
 def main():
     model = MLP(10)
     initial_params = [p.data.copy() for p in model.parameters()]
