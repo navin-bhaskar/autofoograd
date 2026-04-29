@@ -8,7 +8,7 @@ class Tensor:
         self.grad = np.zeros_like(data)
         self._op = _op
         self._label = label
-        self._prev = set(_children)
+        self._prev = tuple(_children)
 
         self._backward = lambda: None
 
@@ -230,6 +230,75 @@ def constant_fold(node):
         return cur_node
     
     return dfs(node)
+
+
+def fuse_linear_relu(node):
+    """This optimizer will try to fuse matmul with relu.
+    In this optimizer, we are looking for: z = relu(matmul(x, W) + b) -> relu(W.x + b)
+    If we find such an opertaion, we can merge it to form a new node that merges these operation
+    """
+
+    visited = set()
+    def dfs(cur_node):
+        if cur_node in visited:
+            return cur_node
+        
+        visited.add(cur_node)
+
+        new_children = []
+
+        for child in cur_node._prev:
+            new_children.append(dfs(child))
+
+        cur_node._prev = tuple(new_children)
+
+        # The pattern we are looking for is this
+        #      
+        #      W           x       
+        #      \          /
+        #       - matmul -
+        #          |      b
+        #          |- + -/   
+        #             |
+        #            relu
+
+        # so lets see if we have a relu
+        
+        if cur_node._op == "relu":
+            prev_node_to_relu = cur_node._prev[0]
+
+            # we go to the child of relu via prev_node_to_relu, is it 'add' (look at above graph)
+            if prev_node_to_relu._op == "+" and len(prev_node_to_relu._prev) == 2:
+                # so we have '+' as the child now see if the node previous to this is matmul
+                add_node = prev_node_to_relu
+                # ensure that only two children are in add_node._prev
+
+                prev_node_to_add = list(filter(lambda node: node._op == 'matmul', add_node._prev))
+                # so far in graph, we have see relu and + now the final op, matmul, lets cheeck for that
+                # we are expecting only one matmul
+                if prev_node_to_add and len(prev_node_to_add) == 1 and prev_node_to_add[0]._op == 'matmul':
+                    matmul_node = prev_node_to_add[0]
+                    # so we are at matmul level, let's get all the operands
+                    # W and x come from matmul and b comes from the + operation
+                    x, W = matmul_node._prev
+                    b = add_node._prev[1]
+
+                    fused = Tensor(np.maximum(0, x.data @ W.data + b.data), (x, W, b), 'fused_linear_relu')
+
+                    def _backward():
+                        # reuse the exisiting backward
+                        tmp = x.matmul(W) + b
+                        tmp = tmp.relu()
+                        tmp.grad = fused.grad
+                        tmp.backward()
+
+                    fused._backward = _backward
+
+                    return fused
+        return cur_node
+    
+    return dfs(node)
+
 
 
 def main():
