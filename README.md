@@ -8,13 +8,13 @@ This project uses uv to install libs
 uv sync
 ```
 
-To tun tests
+To run tests
 
 ```bash
 uv run pytest
 ```
 
-To tun formatting and checks
+To run formatting and checks
 
 ```bash
 uv run ruff check .
