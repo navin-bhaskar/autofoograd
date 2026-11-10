@@ -191,4 +191,98 @@ def test_rmul():
     assert c.data == 10.0
     c.backward()
     assert a.grad == 2.0
-    assert c.grad == 1.0  
+    assert c.grad == 1.0
+
+
+def test_pow():
+    a = Value(3.0)
+    c = a**2
+    assert c.data == 9.0
+    c.backward()
+    assert a.grad == 6.0  # d(a^2)/da = 2*a = 2*3 = 6
+
+
+def test_pow_float():
+    a = Value(4.0)
+    c = a**0.5  # Square root
+    assert c.data == 2.0
+    c.backward()
+    assert a.grad == 0.25  # d(a^0.5)/da = 0.5 * a^(-0.5) = 0.5 * (1/2) = 0.25
+
+
+def test_pow_negative_exponent():
+    a = Value(2.0)
+    c = a**-1  # Reciprocal
+    assert c.data == 0.5
+    c.backward()
+    assert a.grad == -0.25  # d(a^-1)/da = -1 * a^(-2) = -1 * (1/4) = -0.25
+
+
+def test_pow_zero_exponent():
+    a = Value(5.0)
+    c = a**0  # Any number to the power of 0 is 1
+    assert c.data == 1.0
+    c.backward()
+    assert a.grad == 0.0  # d(a^0)/da = 0
+
+
+def test_pow_one_exponent():
+    a = Value(5.0)
+    c = a**1  # Any number to the power of 1 is itself
+    assert c.data == 5.0
+    c.backward()
+    assert a.grad == 1.0  # d(a^1)/da = 1
+
+
+def test_pow_fractional_exponent():
+    a = Value(8.0)
+    c = a ** (1 / 3)  # Cube root
+    assert c.data == pytest.approx(2.0)
+    c.backward()
+    assert a.grad == pytest.approx(
+        1 / 12
+    )  # d(a^(1/3))/da = (1/3) * a^(-2/3) = (1/3) * (1/4) = 1/12
+
+
+def test_pow_with_value():
+    a = Value(2.0)
+    b = Value(3.0)
+
+    with pytest.raises(TypeError):
+        _ = a**b  # This should raise an error since exponent must be float or int
+
+
+def test_true_division():
+    a = Value(6.0)
+    b = Value(2.0)
+    c = a / b
+    assert c.data == 3.0
+    c.backward()
+    assert c._op == "/"
+    assert a.grad == pytest.approx(1 / 2)  # d(a/b)/da = 1/b = 1/2
+    assert b.grad == pytest.approx(-3 / 2)  # d(a/b)/db = -a/b^2 = -6/4 = -3/2
+
+
+def test_rtrue_division():
+    a = Value(2.0)
+    b = 6.0
+    c = b / a  # This will call a.__rtruediv__(b)
+    assert c.data == 3.0
+    c.backward()
+    assert a.grad == pytest.approx(-3 / 2)  # d(b/a)/da = -b/a^2 = -6/4 = -3/2
+
+
+def test_true_division_with_number():
+    a = Value(6.0)
+    b = 2.0
+    c = a / b
+    assert c.data == 3.0
+    c.backward()
+    assert a.grad == pytest.approx(1 / 2)  # d(a/b)/da = 1/b = 1/2
+
+
+def test_true_division_with_string():
+    a = Value(6.0)
+    b = "2.0"
+    with pytest.raises(TypeError):
+        _ = a / b

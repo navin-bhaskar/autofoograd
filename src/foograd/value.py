@@ -95,6 +95,38 @@ class Value:
     def __neg__(self) -> Value:
         return self * -1
 
+    def __pow__(self, exponent: float | int) -> Value:
+        if not isinstance(exponent, (float, int)):
+            return NotImplemented
+
+        out = Value(self.data**exponent, (self,), f"**{exponent}")
+
+        def _backward() -> None:
+            """Chain rule when doing self**exponent:
+            d(out)/d(self) = exponent * self**(exponent-1) or
+            d(x^n)/dx = n*x^(n-1)
+            """
+            self.grad += exponent * (self.data ** (exponent - 1)) * out.grad
+
+        out._backward = _backward
+        return out
+
+    def __truediv__(self, other: Value | float | int) -> Value:
+        other = _coerce(other)
+        if other is NotImplemented:
+            return NotImplemented
+        out = self * (other**-1)  # a/b = a * b^-1 (b^-1 = 1/b)
+        out._op = "/"
+        return out
+
+    def __rtruediv__(self, other: Value | float | int) -> Value:
+        other = _coerce(other)
+        if other is NotImplemented:
+            return NotImplemented
+        out = other * (self**-1)  # b/a = b * a^-1 (a^-1 = 1/a)
+        out._op = "/"
+        return out
+
     def backward(self) -> None:
         """Backpropagate the gradients through the computational graph."""
         visited: set[Value] = set()
