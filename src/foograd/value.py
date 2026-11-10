@@ -42,6 +42,35 @@ class Value:
         out._backward = _backward
         return out
 
+    def __radd__(self, other: Value | float | int) -> Value:
+        return self + other
+
+    def __sub__(self, other: Value | float | int) -> Value:
+        other = _coerce(other)
+        if other is NotImplemented:
+            return NotImplemented
+
+        out = Value(self.data - other.data, (self, other), "-")
+
+        def _backward() -> None:
+            """Rule for         self - other
+            d(out)/d(self) = 1 ( 1   -   0)
+            d(out)/d(other) = -1(0   -   1)
+            So just pass the out.grad to self and -out.grad to other
+            """
+            self.grad += out.grad
+            other.grad -= out.grad
+
+        out._backward = _backward
+        return out
+
+    def __rsub__(self, other: Value | float | int) -> Value:
+        other = _coerce(other)
+        if other is NotImplemented:
+            return NotImplemented
+
+        return other - self
+
     def __mul__(self, other: Value | float | int) -> Value:
         other = _coerce(other)
         if other is NotImplemented:
@@ -59,6 +88,12 @@ class Value:
 
         out._backward = _backward
         return out
+
+    def __rmul__(self, other: Value | float | int) -> Value:
+        return self * other
+
+    def __neg__(self) -> Value:
+        return self * -1
 
     def backward(self) -> None:
         """Backpropagate the gradients through the computational graph."""

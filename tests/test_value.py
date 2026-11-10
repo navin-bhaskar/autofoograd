@@ -130,3 +130,65 @@ def test_backward_number():
     y = a * 2 + 1
     y.backward()
     assert a.grad == 2.0
+
+
+def test_subtract():
+    a = Value(5.0)
+    b = Value(3.0)
+    c = a - b
+    assert c.data == 2.0
+    c.backward()
+    assert a.grad == 1.0
+    assert b.grad == -1.0
+
+
+def test_subtract_same_object():
+    a = Value(5.0)
+    b = a - a
+    assert b.data == 0.0
+    b.backward()
+    assert a.grad == 0.0  # The gradients cancel each other out
+
+
+def test_subtract_number():
+    a = Value(5.0)
+    b = 2.0
+    c = a - b
+    assert c.data == 3.0
+    c.backward()
+    assert c.grad == 1.0
+    assert a.grad == 1.0
+
+
+def test_subtract_string():
+    a = Value(5.0)
+    b = "2.0"
+    with pytest.raises(TypeError):
+        _ = a - b
+
+
+def test_radd():
+    a = Value(2.0)
+    b = 3.0
+    c = b + a  # This will call a.__radd__(b)
+    assert c.data == 5.0
+    c.backward()
+    assert a.grad == 1.0
+
+
+def test_rsub():
+    a = Value(5.0)
+    b = 2.0
+    c = b - a  # This will call a.__rsub__(b)
+    assert c.data == -3.0
+    c.backward()
+    assert a.grad == -1.0
+
+
+def test_rmul():
+    a = Value(5.0)
+    c = 2 * a
+    assert c.data == 10.0
+    c.backward()
+    assert a.grad == 2.0
+    assert c.grad == 1.0  
