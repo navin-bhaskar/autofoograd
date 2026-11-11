@@ -286,3 +286,100 @@ def test_true_division_with_string():
     b = "2.0"
     with pytest.raises(TypeError):
         _ = a / b
+
+
+def test_exp():
+    a = Value(1.0)
+    c = a.exp()
+    assert c.data == pytest.approx(2.718281828459045)  # e^1
+    c.backward()
+    assert a.grad == pytest.approx(2.718281828459045)  # d(e^a)/da = e^a = e^1
+    assert c._op == "exp"
+
+
+def test_exp_of_zero():
+    a = Value(0.0)
+    c = a.exp()
+    assert c.data == pytest.approx(1.0)  # e^0 = 1
+    c.backward()
+    assert a.grad == pytest.approx(1.0)  # d(e^a)/da = e^a = e^0 = 1
+
+
+def test_log():
+    a = Value(5)
+    c = a.log()
+    assert c.data == pytest.approx(1.60943791243)
+    c.backward()
+    assert a.grad == pytest.approx(0.2)  # d(log(a))/da = 1/a = 1/5 = 0.2
+
+
+def test_log_of_one():
+    a = Value(1.0)
+    c = a.log()
+    assert c.data == pytest.approx(0.0)  # log(1) = 0
+    c.backward()
+    assert a.grad == pytest.approx(1.0)  # d(log(a))/da = 1/a = 1/1 = 1
+
+
+def test_exp_log_chain():
+    a = Value(2.0)
+    c = a.exp().log()  # log(exp(a)) = a
+    assert c.data == pytest.approx(2.0)
+    c.backward()
+    assert a.grad == pytest.approx(1.0)  # d(log(exp(a)))/da = 1
+
+
+@pytest.mark.parametrize("x", [0.0, -1.0])
+def test_log_non_positive_raises(x):
+    with pytest.raises(ValueError):
+        Value(x).log()
+
+
+def test_relu_positive():
+    a = Value(3.0)
+    c = a.relu()
+    assert c.data == 3.0
+    c.backward()
+    assert a.grad == 1.0  # d(relu(a))/da = 1 for a > 0
+
+
+def test_relu_negative():
+    a = Value(-2.0)
+    c = a.relu()
+    assert c.data == 0.0
+    c.backward()
+    assert c._op == "relu"
+    assert a.grad == 0.0  # d(relu(a))/da = 0 for a < 0
+
+
+def test_relu_zero():
+    a = Value(0.0)
+    c = a.relu()
+    assert c.data == 0.0
+    c.backward()
+    assert a.grad == 0.0  # d(relu(a))/da = 0 for a = 0
+
+
+def test_tanh_at_zero():
+    a = Value(0.0)
+    c = a.tanh()
+    assert c.data == 0.0
+    assert c._op == "tanh"
+    c.backward()
+    assert a.grad == 1.0  # d(tanh(a))/da = 1 for a = 0
+
+
+def test_tanh_at_one():
+    a = Value(1.0)
+    c = a.tanh()
+    assert c.data == pytest.approx(0.7615941559557649)  # tanh(1)
+    c.backward()
+    assert a.grad == pytest.approx(0.41997434161402614)  # d(tanh(a))/da = 1 - tanh^2(a)
+
+
+def test_relu_chain():
+    a = Value(0.25)
+
+    b = (a * 2 - 1).relu()
+    b.backward()
+    assert a.grad == 0.0

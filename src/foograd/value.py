@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import math
+from types import NotImplementedType
 
-def _coerce(other: Value | float | int) -> Value:
+
+def _coerce(other: Value | float | int) -> Value | NotImplementedType:
     if isinstance(other, Value):
         return other
     if isinstance(other, (float, int)):
@@ -125,6 +128,58 @@ class Value:
             return NotImplemented
         out = other * (self**-1)  # b/a = b * a^-1 (a^-1 = 1/a)
         out._op = "/"
+        return out
+
+    def exp(self) -> Value:
+        """Compute the exponential of this value."""
+        out = Value(math.exp(self.data), (self,), "exp")
+
+        def _backward() -> None:
+            """Chain rule when doing exp(self):
+            d(out)/d(self) = exp(self) or d(e^x)/dx = e^x
+            """
+            self.grad += out.data * out.grad
+
+        out._backward = _backward
+        return out
+
+    def log(self) -> Value:
+        """Compute natural logarithm of this value."""
+        out = Value(math.log(self.data), (self,), "log")
+
+        def _backward() -> None:
+            """Chain rule when doing log(self)
+            d(out)/d(self) = 1 / self or d(ln(x))/dx = 1/x
+            """
+            self.grad += (1 / self.data) * out.grad
+
+        out._backward = _backward
+        return out
+
+    def relu(self) -> Value:
+        """Compute the ReLU of this value."""
+        out = Value(max(0, self.data), (self,), "relu")
+
+        def _backward() -> None:
+            """Chain rule when doing ReLU(self)
+            d(out)/d(self) = 1 if self > 0 else 0
+            """
+            self.grad += (out.data > 0) * out.grad
+
+        out._backward = _backward
+        return out
+
+    def tanh(self) -> Value:
+        """Compute the hyperbolic tangent of this value."""
+        out = Value(math.tanh(self.data), (self,), "tanh")
+
+        def _backward() -> None:
+            """Chain rule when doing tanh(self)
+            d(out)/d(self) = 1 - tanh(self)^2 or d(tanh(x))/dx = 1 - tanh(x)^2
+            """
+            self.grad += (1 - out.data**2) * out.grad
+
+        out._backward = _backward
         return out
 
     def backward(self) -> None:
