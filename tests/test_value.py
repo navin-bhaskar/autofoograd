@@ -383,3 +383,4 @@ def test_relu_chain():
     b = (a * 2 - 1).relu()
     b.backward()
     assert a.grad == 0.0
+    assert b.data == 0.0  # (0.25 * 2 - 1) = -0.5, relu(-0.5) = 0
