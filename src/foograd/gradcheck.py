@@ -57,5 +57,3 @@ def gradcheck(
         abs(analytical - numerical) <= atol + rtol * abs(numerical)
         for analytical, numerical in zip(analytical_grads, numerical_grads_list, strict=True)
     )
-
-
