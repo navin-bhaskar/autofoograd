@@ -38,3 +38,66 @@ def test_tensor_copies_input():
     t = Tensor(arr)
     arr[0] = 1.5
     assert t.data[0] == 1.0
+
+
+def test_tensor_add_on_same_shape():
+    a = Tensor([1, 2])
+    b = Tensor([3, 4])
+
+    out = a + b
+    np.testing.assert_array_equal(out.data, [4, 6])
+
+    out.backward()
+
+    np.testing.assert_array_equal(out.grad, [1, 1])
+    np.testing.assert_array_equal(a.grad, [1, 1])
+    np.testing.assert_array_equal(b.grad, [1, 1])
+
+
+def test_tensor_add_with_broadcast():
+    a = Tensor([[1, 2], [3, 4], [5, 6]])
+    b = Tensor(np.ones((2,)))
+
+    out = a + b
+    np.testing.assert_array_equal(out.data, [[2, 3], [4, 5], [6, 7]])
+
+    out.backward()
+    np.testing.assert_array_equal(b.grad, [3, 3])
+    np.testing.assert_array_equal(a.grad, [[1, 1], [1, 1], [1, 1]])
+
+
+def test_tensor_radd():
+    a = Tensor([[1, 2], [2, 2]])
+
+    out = 2 + a
+    np.testing.assert_array_equal(out.data, [[3, 4], [4, 4]])
+
+    out.backward()
+    np.testing.assert_array_equal(a.grad, [[1, 1], [1, 1]])
+
+
+def test_tensor_add_3_4_and_3_1():
+    a = Tensor(np.ones((3, 4)))
+    b = Tensor(np.ones((3, 1)))
+
+    c = a + b
+    c.backward()
+    np.testing.assert_array_equal(a.grad, np.ones((3, 4)))
+    np.testing.assert_array_equal(b.grad, 4 * np.ones((3, 1)))
+
+
+def test_tensor_add_with_number():
+    a = Tensor([1, 1])
+    t = a + 2
+
+    t.backward()
+    np.testing.assert_array_equal(t.data, [3.0, 3.0])
+    np.testing.assert_array_equal(a.grad, [1, 1])
+
+
+def test_tensor_sum_twice_contribution():
+    a = Tensor([1, 2])
+    c = a + a
+
+    c.backward()
+    np.testing.assert_array_equal(a.grad, [2, 2])

@@ -25,9 +25,7 @@ def unbroadcast(grad: np.ndarray, shape: tuple[int, ...]) -> np.ndarray:
 
 
 class Tensor:
-    def __init__(
-        self, data: ArrayLike, children: tuple[Tensor, ...] = (), op: str = ""
-    ) -> None:
+    def __init__(self, data: ArrayLike, children: tuple[Tensor, ...] = (), op: str = "") -> None:
         self.data = np.array(data, dtype=np.float64)
         self.grad = np.zeros_like(self.data)
         self._children = children
@@ -60,6 +58,30 @@ class Tensor:
             for child in cur_node._children:
                 Tensor._topo_sort(child, visited, topo_sorted_nodes)
             topo_sorted_nodes.append(cur_node)
+
+    def __add__(self, other: Tensor | ArrayLike) -> Tensor:
+        other = _coerce(other)
+        if other is NotImplemented:
+            return NotImplemented
+
+        out = Tensor(self.data + other.data, (self, other), "+")
+
+        def _backward() -> None:
+            """Rule for self + other
+            d(out)/d(self) = 1
+            d(out)/d(other) = 1
+            So just pass the out.grad to both inputs
+            Note that the shape of out grad has to be mapped to original inputs.
+            So use the rules as specified in unbroadcast
+            """
+            self.grad += unbroadcast(out.grad, self.shape)
+            other.grad += unbroadcast(out.grad, other.shape)
+
+        out._backward = _backward
+        return out
+
+    def __radd__(self, other: ArrayLike | Tensor) -> Tensor:
+        return self + other
 
 
 def _coerce(other: float | int | np.ndarray) -> Tensor | NotImplementedType:
