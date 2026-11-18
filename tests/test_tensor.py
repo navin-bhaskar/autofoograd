@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from foograd import Tensor
 
@@ -150,3 +151,42 @@ def test_tensor_mul_self():
 
     c.backward()
     np.testing.assert_array_equal(a.grad, [4, 6])
+
+
+def test_tensor_pow_square():
+    a = Tensor([1, 2, 3])
+    b = a**2
+
+    np.testing.assert_array_equal(b.data, [1, 4, 9])
+
+    b.backward()
+    # grad -> (2) * [1, 2, 3]**(2-1) = 2*[1, 2, 3]
+    np.testing.assert_array_equal(a.grad, [2, 4, 6])
+
+
+def test_tensor_pow_negative():
+    a = Tensor([1, 2, 3])
+    b = a**-1
+
+    np.testing.assert_allclose(b.data, [1, 1 / 2, 1 / 3])
+
+    b.backward()
+    # grad -> (-1)*[1, 2, 3]**(-1-1) = -1*[1, 2, 3]**(-2)
+    #      -> [-1/1, -1/4, -1/9]
+    np.testing.assert_allclose(a.grad, [-1, -1 / 4, -1 / 9])
+
+
+def test_tensor_pow_tensor_exponent_rejected():
+    a = Tensor([1, 2, 3])
+    with pytest.raises(TypeError):
+        _ = a ** (Tensor(2))
+
+
+def test_tensor_pow_chained():
+    a = Tensor([1, 2, 3])
+    out = (a**2) * 3
+    out.backward()
+
+    np.testing.assert_array_equal(out.data, [3, 12, 27])
+    # d/da = 3*2*a = 6a
+    np.testing.assert_array_equal(a.grad, [6, 12, 18])

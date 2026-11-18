@@ -104,6 +104,22 @@ class Tensor:
     def __rmul__(self, other: ArrayLike | Tensor) -> Tensor | NotImplementedType:
         return self * other
 
+    def __pow__(self, exponent: int | float) -> Tensor | NotImplementedType:
+        if not isinstance(exponent, (int, float)):
+            return NotImplemented
+
+        out = Tensor(self.data**exponent, (self,), f"**{exponent}")
+
+        def _backward() -> None:
+            """Chain rule when doing self**exponent:
+            d(out)/d(self) = exponent * self**(exponent-1) or
+            d(x^n)/dx = n*x^(n-1)
+            """
+            self.grad += exponent * self.data ** (exponent - 1) * out.grad
+
+        out._backward = _backward
+        return out
+
 
 def _coerce(other: float | int | np.ndarray | Tensor) -> Tensor | NotImplementedType:
     if isinstance(other, Tensor):
