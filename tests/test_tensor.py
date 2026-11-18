@@ -101,3 +101,52 @@ def test_tensor_sum_twice_contribution():
 
     c.backward()
     np.testing.assert_array_equal(a.grad, [2, 2])
+
+
+def test_tensor_mul_with_broadcast():
+    a = Tensor([[1, 2], [3, 4], [5, 6]])
+    b = Tensor([10, 20])
+
+    out = a * b
+    np.testing.assert_array_equal(out.data, [[10, 40], [30, 80], [50, 120]])
+
+    out.backward()
+    np.testing.assert_array_equal(a.grad, [[10, 20], [10, 20], [10, 20]])
+
+    np.testing.assert_array_equal(b.grad, [9, 12])
+
+
+def test_tensor_mul_with_same_shape():
+    a_data = [[1, 2], [3, 4]]
+    b_data = [[4, 5], [6, 7]]
+
+    a = Tensor(a_data)
+    b = Tensor(b_data)
+
+    c = a * b
+    np.testing.assert_array_equal(c.data, [[4, 10], [18, 28]])
+
+    c.backward()
+    # The data of the 'other' is what we are expecting gradients to be
+    np.testing.assert_array_equal(a.grad, b_data)
+    np.testing.assert_array_equal(b.grad, a_data)
+
+
+def test_tensor_rmul():
+    a = Tensor([1, 2])
+
+    c = 3 * a
+    np.testing.assert_array_equal(c.data, [3, 6])
+
+    c.backward()
+    np.testing.assert_array_equal(a.grad, [3, 3])
+
+
+def test_tensor_mul_self():
+    a = Tensor([2, 3])
+    c = a * a
+
+    np.testing.assert_array_equal(c.data, [4, 9])
+
+    c.backward()
+    np.testing.assert_array_equal(a.grad, [4, 6])

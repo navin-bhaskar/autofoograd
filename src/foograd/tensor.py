@@ -59,7 +59,7 @@ class Tensor:
                 Tensor._topo_sort(child, visited, topo_sorted_nodes)
             topo_sorted_nodes.append(cur_node)
 
-    def __add__(self, other: Tensor | ArrayLike) -> Tensor:
+    def __add__(self, other: Tensor | ArrayLike) -> Tensor | NotImplementedType:
         other = _coerce(other)
         if other is NotImplemented:
             return NotImplemented
@@ -80,11 +80,32 @@ class Tensor:
         out._backward = _backward
         return out
 
-    def __radd__(self, other: ArrayLike | Tensor) -> Tensor:
+    def __radd__(self, other: ArrayLike | Tensor) -> Tensor | NotImplementedType:
         return self + other
 
+    def __mul__(self, other: ArrayLike | Tensor) -> Tensor | NotImplementedType:
+        other = _coerce(other)
+        if other is NotImplemented:
+            return NotImplemented
 
-def _coerce(other: float | int | np.ndarray) -> Tensor | NotImplementedType:
+        out = Tensor(self.data * other.data, (self, other), "*")
+
+        def _backward() -> None:
+            """Chain rule when doing self*other:
+            d(out)/d(self) = other
+            d(out)/d(other) = self
+            """
+            self.grad += unbroadcast(other.data * out.grad, self.shape)
+            other.grad += unbroadcast(self.data * out.grad, other.shape)
+
+        out._backward = _backward
+        return out
+
+    def __rmul__(self, other: ArrayLike | Tensor) -> Tensor | NotImplementedType:
+        return self * other
+
+
+def _coerce(other: float | int | np.ndarray | Tensor) -> Tensor | NotImplementedType:
     if isinstance(other, Tensor):
         return other
     if isinstance(other, (float, int, np.ndarray)):
