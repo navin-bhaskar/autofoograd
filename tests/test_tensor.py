@@ -190,3 +190,61 @@ def test_tensor_pow_chained():
     np.testing.assert_array_equal(out.data, [3, 12, 27])
     # d/da = 3*2*a = 6a
     np.testing.assert_array_equal(a.grad, [6, 12, 18])
+
+
+def test_neg():
+    a = Tensor([1, 2, 3])
+    out = -a
+    out.backward()
+
+    assert out._op == "neg"
+    np.testing.assert_array_equal(out.data, [-1, -2, -3])
+    np.testing.assert_array_equal(a.grad, [-1, -1, -1])
+
+
+def test_sub():
+    a = Tensor([1, 2, 3])
+    b = Tensor([4, 5, 6])
+
+    out = a - b
+    out.backward()
+
+    assert out._op == "-"
+    np.testing.assert_array_equal(out.data, [-3, -3, -3])
+    np.testing.assert_array_equal(a.grad, [1, 1, 1])
+    np.testing.assert_array_equal(b.grad, [-1, -1, -1])
+
+
+def test_rsub():
+    a = Tensor([1, 2, 3])
+
+    out = 5 - a
+    out.backward()
+
+    assert out._op == "-"
+    np.testing.assert_array_equal(out.data, [4, 3, 2])
+    np.testing.assert_array_equal(a.grad, [-1, -1, -1])
+
+
+def test_tensor_div_with_broadcast():
+    a = Tensor([[2, 4], [6, 8]])
+    b = Tensor([2, 4])
+
+    out = a / b
+    out.backward()
+
+    assert out._op == "/"
+    np.testing.assert_array_equal(out.data, [[1, 1], [3, 2]])
+    np.testing.assert_allclose(a.grad, [[0.5, 0.25], [0.5, 0.25]])
+    np.testing.assert_allclose(b.grad, [-2, -0.75])
+
+
+def test_tensor_rdiv():
+    a = Tensor([1, 2, 4])
+    out = 1 / a
+
+    out.backward()
+
+    assert out._op == "/"
+    np.testing.assert_allclose(out.data, [1, 0.5, 0.25])
+    np.testing.assert_allclose(a.grad, [-1, -0.25, -0.0625])

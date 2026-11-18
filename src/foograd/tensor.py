@@ -120,6 +120,39 @@ class Tensor:
         out._backward = _backward
         return out
 
+    def __neg__(self) -> Tensor | NotImplementedType:
+        out = -1 * self
+        out._op = "neg"
+        return out
+
+    def __sub__(self, other: ArrayLike | Tensor) -> Tensor | NotImplementedType:
+        other = _coerce(other)
+        if other is NotImplemented:
+            return NotImplemented
+        out = self + -other
+        out._op = "-"
+        return out
+
+    def __rsub__(self, other: ArrayLike | Tensor) -> Tensor | NotImplementedType:
+        other = _coerce(other)
+        if other is NotImplemented:
+            return NotImplemented
+        return other - self
+
+    def __truediv__(self, other: ArrayLike | Tensor) -> Tensor | NotImplementedType:
+        other = _coerce(other)
+        if other is NotImplemented:
+            return NotImplemented
+        out = self * (other**-1)
+        out._op = "/"
+        return out
+
+    def __rtruediv__(self, other: ArrayLike | Tensor) -> Tensor | NotImplementedType:
+        other = _coerce(other)
+        if other is NotImplemented:
+            return other
+        return other / self
+
 
 def _coerce(other: float | int | np.ndarray | Tensor) -> Tensor | NotImplementedType:
     if isinstance(other, Tensor):
