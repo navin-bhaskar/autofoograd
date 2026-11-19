@@ -88,3 +88,27 @@ def tensor_numerical_grads(
             grad[idx] = (f_plus - f_minus) / (2 * eps)
         grads.append(grad)
     return grads
+
+
+def tensor_gradcheck(
+    f: Callable[[list[Tensor]], Tensor],
+    xs: list[np.ndarray],
+    eps: float = 1e-6,
+    atol: float = 1e-5,
+    rtol: float = 1e-5,
+) -> bool:
+    """Check the gradients of f at xs using numerical gradients."""
+    inputs = [Tensor(x) for x in xs]
+    output = f(inputs)
+
+    # Compute gradients using backwards pass
+    output.backward()
+    analytical_grads = [t.grad for t in inputs]
+
+    # Compute numerical grads
+    numerical_grads = tensor_numerical_grads(f, xs, eps)
+
+    return all(
+        np.allclose(a, n, atol=atol, rtol=rtol)
+        for a, n in zip(analytical_grads, numerical_grads, strict=True)
+    )
