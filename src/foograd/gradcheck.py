@@ -1,5 +1,8 @@
 from collections.abc import Callable
 
+import numpy as np
+
+from foograd.tensor import Tensor
 from foograd.value import Value
 
 
@@ -57,3 +60,31 @@ def gradcheck(
         abs(analytical - numerical) <= atol + rtol * abs(numerical)
         for analytical, numerical in zip(analytical_grads, numerical_grads_list, strict=True)
     )
+
+
+def tensor_numerical_grads(
+    f: Callable[[list[Tensor]], Tensor], xs: list[np.ndarray], eps: float = 1e-6
+) -> list[np.ndarray]:
+    """Do numerical gradient on Tensor. The idea is same as numerical_grads() above.
+    Nudge the inputs slightly in both directions and measure the change.
+    In backward(), out.grad is set to ones as seed, which is the gradient of out.sum().
+    So we measure f(...).data.sum() as well to match what our autograd engine would do"""
+    base = [np.array(x, dtype=np.float64) for x in xs]
+    grads: list[np.ndarray] = []
+
+    for k, x in enumerate(base):
+        grad = np.zeros_like(x)
+        for idx in np.ndindex(x.shape):
+            plus = [a.copy() for a in base]
+            plus[k][idx] += eps
+
+            minus = [a.copy() for a in base]
+            minus[k][idx] -= eps
+
+            # Add up all elements to get the total deviation
+            f_plus = f([Tensor(val) for val in plus]).data.sum()
+            f_minus = f([Tensor(val) for val in minus]).data.sum()
+
+            grad[idx] = (f_plus - f_minus) / (2 * eps)
+        grads.append(grad)
+    return grads
