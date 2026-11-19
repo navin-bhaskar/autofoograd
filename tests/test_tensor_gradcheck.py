@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from foograd.gradcheck import tensor_gradcheck, tensor_numerical_grads
 from foograd.tensor import Tensor
@@ -62,3 +63,61 @@ def test_tensor_grad_check_fails_on_broken_backward(monkeypatch):
     b = np.array([[4, 5], [6, 7], [8, 8]], dtype=np.float64)
 
     assert not tensor_gradcheck(test_func, [a, b])
+
+
+BINARY_OPS = {
+    "add": lambda xs: xs[0] + xs[1],
+    "sub": lambda xs: xs[0] - xs[1],
+    "mul": lambda xs: xs[0] * xs[1],
+    "div": lambda xs: xs[0] / xs[1],
+}
+
+SHAPES = [
+    ((3, 2), (3, 2)),  # Same shape
+    ((3, 2), (2,)),  # Left padded
+    ((3, 4), (3, 1)),  # size 1 axis
+    ((2, 3, 4), (3, 1)),  # both rules at once
+    ((3, 2), ()),  # scalar
+]
+
+ALL_SHAPES = SHAPES + [(s1, s0) for s0, s1 in SHAPES if s0 != s1]
+
+
+@pytest.mark.parametrize("op_name", BINARY_OPS)
+@pytest.mark.parametrize("shape_a, shape_b", ALL_SHAPES, ids=[f"{a}--{b}" for a, b in ALL_SHAPES])
+def test_binary_ops_gradcheck(op_name, shape_a, shape_b):
+    rng = np.random.default_rng(0)
+    a = rng.uniform(0.5, 2.0, size=shape_a)
+    b = rng.uniform(0.5, 2.0, size=shape_b)
+    assert tensor_gradcheck(BINARY_OPS[op_name], [a, b])
+
+
+UNARY_OPS = {
+    "neg": lambda xs: -xs[0],
+    "pow": lambda xs: xs[0] ** 2,
+    "pow3": lambda xs: xs[0] ** 3,
+    "pow_neg1": lambda xs: xs[0] ** -1,
+    "sqrt": lambda xs: xs[0] ** 0.5,
+}
+
+
+UNARY_OPS_SHAPES = [(), (3,), (2, 3)]
+
+
+@pytest.mark.parametrize("op_name", UNARY_OPS)
+@pytest.mark.parametrize("shape", UNARY_OPS_SHAPES, ids=[f"{a}" for a in UNARY_OPS_SHAPES])
+def test_unary_ops_gradcheck(op_name, shape):
+    rng = np.random.default_rng(0)
+    a = rng.uniform(0.5, 2.0, size=shape)
+    assert tensor_gradcheck(UNARY_OPS[op_name], [a])
+
+
+def test_composite_ops_grad_check():
+    def test_func(xs):
+        # (a*b - a/b) ** 2
+        return (xs[0] * xs[1] - xs[0] / xs[1]) ** 2
+
+    a = np.array([[1, 2], [3, 4], [5, 6]])
+    b = np.array([8, 9])
+
+    assert tensor_gradcheck(test_func, [a, b])
