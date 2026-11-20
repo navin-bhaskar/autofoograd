@@ -121,3 +121,14 @@ def test_composite_ops_grad_check():
     b = np.array([8, 9])
 
     assert tensor_gradcheck(test_func, [a, b])
+
+
+def test_matmul_op_grad_check():
+    def matmul_func(xs):
+        # a @ b
+        return xs[0] @ xs[1]
+    np.random.default_rng(0)
+    a = np.random.randint(1, 100, size=(2, 3))
+    b = np.random.randint(1, 100, size=(3, 4))
+
+    assert tensor_gradcheck(matmul_func, [a, b])

@@ -248,3 +248,46 @@ def test_tensor_rdiv():
     assert out._op == "/"
     np.testing.assert_allclose(out.data, [1, 0.5, 0.25])
     np.testing.assert_allclose(a.grad, [-1, -0.25, -0.0625])
+
+
+def test_tensor_matmul():
+    a = Tensor([[1, 2], [3, 4]])
+    b = Tensor([[5, 6], [7, 8]])
+
+    out = a @ b
+
+    assert out._op == "@"
+    np.testing.assert_array_equal(out.data, [[19, 22], [43, 50]])
+    out.backward()
+    np.testing.assert_array_equal(a.grad, [[11, 15], [11, 15]])
+    np.testing.assert_array_equal(b.grad, [[4, 4], [6, 6]])
+
+
+def test_tensor_matmul_unsupported_shape():
+    a = Tensor([[1, 2], [3, 4]])
+    b = Tensor([5, 6])
+
+    with pytest.raises(ValueError, match="Unsupported dimensions for Tensor matmul"):
+        _ = a @ b
+
+
+def test_tensor_rmatmul():
+    a = np.array([[1, 2], [3, 4]])
+    b = Tensor([[5, 6], [7, 8]])
+    out = a @ b
+    out.backward()
+
+    np.testing.assert_array_equal(out.data, [[19, 22], [43, 50]])
+    np.testing.assert_array_equal(b.grad, [[4, 4], [6, 6]])
+
+
+def test_tensor_matmul_with_non_square_shape():
+    a = Tensor([[1, 2, 3], [4, 5, 6]])
+    b = Tensor([[1, 2, 3, 4], [5, 6, 7, 8], [1, 2, 3, 4]])
+
+    out = a @ b
+    out.backward()
+
+    np.testing.assert_array_equal(out.data, [[14, 20, 26, 32], [35, 50, 65, 80]])
+    np.testing.assert_array_equal(a.grad, [[10.0, 26.0, 10.0], [10.0, 26.0, 10.0]])
+    np.testing.assert_array_equal(b.grad, [[5, 5, 5, 5], [7, 7, 7, 7], [9, 9, 9, 9]])

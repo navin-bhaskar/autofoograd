@@ -25,6 +25,8 @@ def unbroadcast(grad: np.ndarray, shape: tuple[int, ...]) -> np.ndarray:
 
 
 class Tensor:
+    __array_ufunc__ = None  # Stop numpy from taking over our operations on np arrays
+
     def __init__(self, data: ArrayLike, children: tuple[Tensor, ...] = (), op: str = "") -> None:
         self.data = np.array(data, dtype=np.float64)
         self.grad = np.zeros_like(self.data)
@@ -152,6 +154,40 @@ class Tensor:
         if other is NotImplemented:
             return other
         return other / self
+
+    def __matmul__(self, other: ArrayLike | Tensor) -> Tensor | NotImplementedType:
+        other = _coerce(other)
+        if other is NotImplemented:
+            return NotImplemented
+
+        if self.data.ndim != 2 or other.data.ndim != 2:
+            raise ValueError(
+                f"Unsupported dimensions for Tensor matmul got {self.shape} @ {other.shape}"
+            )
+
+        out = Tensor(self.data @ other.data, (self, other), "@")
+
+        def _backward() -> None:
+            """Matmul is not commutative arrange the 'out.grad' so that
+            matrix rule of multiplication that only matrix of shape MxN and NxK
+            can be multiplied.
+            Let self -> MxN and other -> NxK then out.grad -> MxK
+            self.T -> NxM; other.T -> KxN
+
+            out.grad @ other.data.T -> MxK @ KxN -> MxN
+            self.data.T @ out.grad -> NxM @ MxK -> NxK
+            """
+            self.grad += out.grad @ other.data.T
+            other.grad += self.data.T @ out.grad
+
+        out._backward = _backward
+        return out
+
+    def __rmatmul__(self, other: ArrayLike | Tensor) -> Tensor | NotImplementedType:
+        other = _coerce(other)
+        if other is NotImplemented:
+            return NotImplemented
+        return other @ self
 
 
 def _coerce(other: float | int | np.ndarray | Tensor) -> Tensor | NotImplementedType:
