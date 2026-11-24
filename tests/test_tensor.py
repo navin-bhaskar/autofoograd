@@ -291,3 +291,51 @@ def test_tensor_matmul_with_non_square_shape():
     np.testing.assert_array_equal(out.data, [[14, 20, 26, 32], [35, 50, 65, 80]])
     np.testing.assert_array_equal(a.grad, [[10.0, 26.0, 10.0], [10.0, 26.0, 10.0]])
     np.testing.assert_array_equal(b.grad, [[5, 5, 5, 5], [7, 7, 7, 7], [9, 9, 9, 9]])
+
+
+def test_tensor_sum():
+    a = Tensor([[1, 2, 3], [4, 5, 6]])
+    out = a.sum()
+    out.backward()
+
+    assert out.data == 21
+    assert out.shape == ()
+    assert out._op == "sum"
+    np.testing.assert_array_equal(a.grad, [[1, 1, 1], [1, 1, 1]])
+
+
+def test_tensor_sum_axis_0():
+    x = Tensor([[1, 2, 3], [4, 5, 6]])
+    y = x.sum(0) * np.array([10, 20, 30])
+    y.backward()
+
+    np.testing.assert_array_equal(x.grad, [[10, 20, 30], [10, 20, 30]])
+    assert y.shape == (3,)
+    np.testing.assert_array_equal(y.data, [50, 140, 270])
+    assert y.shape == (3,)
+
+
+def test_tensor_sum_axis_1():
+    x = Tensor([[1, 2, 3], [4, 5, 6]])
+    y = x.sum(1) * np.array([10, 20])
+    y.backward()
+
+    np.testing.assert_array_equal(x.grad, [[10, 10, 10], [20, 20, 20]])
+    assert y.shape == (2,)
+    # x.sum(1) = [1+2+3, 15] -> let this be a
+    # a* [10, 20] = [6, 15] * [10, 20] = [60, 300]
+    np.testing.assert_array_equal(y.data, [60, 300])
+
+
+def test_tensor_sum_axis_1_keepdims():
+    x = Tensor([[1, 2, 3], [4, 5, 6]])
+    y = x.sum(1, True) * np.array([[10], [20]])
+    y.backward()
+
+    # x.sum(1, True) -> [[6], [15]] -> let this be a
+    # y = a*[[10], [20]] = [[60], [300]]
+    assert y.shape == (2, 1)
+    np.testing.assert_array_equal(y.data, [[60], [300]])
+
+    # grad on x should be np.array([[10], [20]])(data) expanded
+    np.testing.assert_array_equal(x.grad, [[10, 10, 10], [20, 20, 20]])

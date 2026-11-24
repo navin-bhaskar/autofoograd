@@ -189,6 +189,23 @@ class Tensor:
             return NotImplemented
         return other @ self
 
+    def sum(self, axis: int | None = None, keepdims: bool = False) -> Tensor:
+        """d(out)/d(x_i) = 1 for every element, so copy(broadcast) the out.grad into
+        every slot of self.grad while properly handling the dims and axes
+        """
+        out = Tensor(np.sum(self.data, axis=axis, keepdims=keepdims), (self,), "sum")
+
+        def _backward() -> None:
+            grad = out.grad
+
+            if axis is not None and not keepdims:
+                grad = np.expand_dims(grad, axis)
+
+            self.grad += np.broadcast_to(grad, self.shape)
+
+        out._backward = _backward
+        return out
+
 
 def _coerce(other: float | int | np.ndarray | Tensor) -> Tensor | NotImplementedType:
     if isinstance(other, Tensor):

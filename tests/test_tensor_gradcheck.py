@@ -127,8 +127,31 @@ def test_matmul_op_grad_check():
     def matmul_func(xs):
         # a @ b
         return xs[0] @ xs[1]
-    np.random.default_rng(0)
-    a = np.random.randint(1, 100, size=(2, 3))
-    b = np.random.randint(1, 100, size=(3, 4))
+
+    rng = np.random.default_rng(0)
+    a = rng.integers(1, 100, size=(2, 3))
+    b = rng.integers(1, 100, size=(3, 4))
 
     assert tensor_gradcheck(matmul_func, [a, b])
+
+
+def test_sum():
+    def tensor_sum(xs):
+        return xs[0] * xs[0].sum()
+
+    rng = np.random.default_rng(0)
+    a = rng.uniform(0.5, 2.0, size=(2, 3))
+
+    assert tensor_gradcheck(tensor_sum, [a])
+
+
+@pytest.mark.parametrize("axis", [None, 0, 1, -1])
+@pytest.mark.parametrize("keepdims", [False, True])
+def test_sum_axis_gradcheck(axis, keepdims):
+    def summ_sqr(xs):
+        return xs[0].sum(axis, keepdims) ** 2
+
+    rng = np.random.default_rng(0)
+    a = rng.uniform(0.5, 5.0, size=(2, 3))
+
+    assert tensor_gradcheck(summ_sqr, [a])
