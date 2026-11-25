@@ -98,6 +98,12 @@ UNARY_OPS = {
     "pow3": lambda xs: xs[0] ** 3,
     "pow_neg1": lambda xs: xs[0] ** -1,
     "sqrt": lambda xs: xs[0] ** 0.5,
+    "exp": lambda xs: xs[0].exp(),
+    "exp_chained": lambda xs: xs[0].exp() ** 2,
+    "exp_reused": lambda xs: xs[0] * xs[0].exp(),
+    "log": lambda xs: xs[0].log(),
+    "log_chained": lambda xs: xs[0].log() ** 2,
+    "log_reused": lambda xs: xs[0] * xs[0].log(),
 }
 
 
@@ -186,3 +192,18 @@ def test_reshape_reused_input():
     rng = np.random.default_rng(0)
     a = rng.uniform(0.55, 2.0, size=(2, 3))
     assert tensor_gradcheck(f, [a])
+
+
+RELU_OPS = {
+    "relu": lambda xs: xs[0].relu(),
+    "relu_chained": lambda xs: xs[0].relu() ** 2,
+    "relu_reused": lambda xs: xs[0] * xs[0].relu(),
+}
+
+
+@pytest.mark.parametrize("op_name", RELU_OPS)
+@pytest.mark.parametrize("shape", [(6,), (2, 3)], ids=str)
+def test_relu_gradcheck(op_name, shape):
+    # Both signs, and well away from the kink at 0 where the numerical slope is 0.5
+    a = np.array([-2.0, 1.5, -0.5, 0.5, 2.0, -1.0]).reshape(shape)
+    assert tensor_gradcheck(RELU_OPS[op_name], [a])

@@ -408,3 +408,47 @@ def test_tensor_reshape_bad_value():
 
     with pytest.raises(ValueError):
         _ = x.reshape(4, 2)
+
+
+def test_tensor_exp():
+    x = Tensor([[0, 1, 2]])
+    y = x.exp()
+    z = y * np.array([[10, 20, 30]])
+    z.backward()
+
+    assert y._op == "exp"
+    np.testing.assert_allclose(y.data, [[1, np.e, np.e**2]])
+    # d(e^x)/dx = e^x, times the upstream gradient [10, 20, 30]
+    np.testing.assert_allclose(x.grad, [[10, 20 * np.e, 30 * np.e**2]])
+
+
+def test_tensor_log():
+    x = Tensor([[1, 2, 4]])
+    y = x.log()
+    z = y * np.array([[10, 20, 30]])
+    z.backward()
+
+    assert y._op == "log"
+    # log(4) = 2 * log(2)
+    np.testing.assert_allclose(y.data, [[0, 0.6931471805599453, 1.3862943611198906]])
+    # d(ln(x))/dx = 1/x -> [10/1, 20/2, 30/4]
+    np.testing.assert_allclose(x.grad, [[10, 10, 7.5]])
+
+
+def test_tensor_relu():
+    x = Tensor([[-1, 0, 2], [3, -4, 5]])
+    y = x.relu()
+    z = y * np.array([[10, 20, 30], [40, 50, 60]])
+    z.backward()
+
+    assert y._op == "relu"
+    assert y.shape == (2, 3)
+    np.testing.assert_array_equal(y.data, [[0, 0, 2], [3, 0, 5]])
+    # Gradient passes where x > 0 and is blocked elsewhere, including at x == 0
+    np.testing.assert_array_equal(x.grad, [[0, 0, 30], [40, 0, 60]])
+
+
+def test_tensor_relu_does_not_change_input():
+    x = Tensor([[-1, 0, 2]])
+    x.relu().backward()
+    np.testing.assert_array_equal(x.data, [[-1, 0, 2]])

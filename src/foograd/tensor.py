@@ -236,6 +236,45 @@ class Tensor:
         out._backward = _backward
         return out
 
+    def exp(self) -> Tensor:
+        """Computes exponent"""
+        out = Tensor(np.exp(self.data), (self,), "exp")
+
+        def _backward() -> None:
+            """Chain rule when doing exp(self):
+            d(out)/d(self) = exp(self) or d(e^x)/dx = e^x
+            """
+            self.grad += out.data * out.grad
+
+        out._backward = _backward
+        return out
+
+    def log(self) -> Tensor:
+        """Compute natural log"""
+        out = Tensor(np.log(self.data), (self,), "log")
+
+        def _backward() -> None:
+            """Chain rule when doing log(self)
+            d(out)/d(self) = 1 / self or d(ln(x))/dx = 1/x
+            """
+            self.grad += (1 / self.data) * out.grad
+
+        out._backward = _backward
+        return out
+
+    def relu(self) -> Tensor:
+        """Compute the ReLU of this tensor, element by element."""
+        out = Tensor(np.maximum(0, self.data), (self,), "relu")
+
+        def _backward() -> None:
+            """Chain rule when doing ReLU(self)
+            d(out)/d(self) = 1 if self > 0 else 0
+            """
+            self.grad += (self.data > 0) * out.grad
+
+        out._backward = _backward
+        return out
+
 
 def _coerce(other: float | int | np.ndarray | Tensor) -> Tensor | NotImplementedType:
     if isinstance(other, Tensor):
