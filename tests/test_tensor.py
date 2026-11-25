@@ -339,3 +339,40 @@ def test_tensor_sum_axis_1_keepdims():
 
     # grad on x should be np.array([[10], [20]])(data) expanded
     np.testing.assert_array_equal(x.grad, [[10, 10, 10], [20, 20, 20]])
+
+
+def test_tensor_mean():
+    x = Tensor([[1, 2, 3], [4, 5, 6]])
+    y = x.mean()
+    y.backward()
+
+    # sum = 1+2+3+4+5+6 = 21 mean 21/6 as we have 6 elements = 3.5
+    assert y.data == 3.5
+    # chain rule for sum(x) / 6 => grad = [[1/6, 1/6...], [1/6, ..]] for x
+    np.testing.assert_allclose(x.grad, [[1 / 6, 1 / 6, 1 / 6], [1 / 6, 1 / 6, 1 / 6]])
+    assert y._op == "mean"
+
+
+def test_tensor_mean_axis_0():
+    x = Tensor([[1, 2, 3], [4, 5, 6]])
+    y = x.mean(axis=0)
+    y.backward()
+
+    # sum = [5, 7, 9] mean = [5/2, 7/2, 9/2]
+    # n is 2 since [[1+4], [2+5], [3+6]]
+    np.testing.assert_allclose(y.data, [5 / 2, 7 / 2, 9 / 2])
+    # chain rule sum(x, axis=0)/2 => grad = [all 1/2]
+    np.testing.assert_allclose(x.grad, [[0.5, 0.5, 0.5], [0.5, 0.5, 0.5]])
+
+
+def test_tensor_mean_axis_1():
+    x = Tensor([[1, 2, 3], [4, 5, 6]])
+    y = x.mean(axis=1)
+    y.backward()
+
+    # sum = [6, 15] -> [[1+2+3], [4+5+6]]
+    # n is 3 since 3 elements contibuted to sum
+    # mean = [6/3, 15/3]
+    np.testing.assert_allclose(y.data, [2, 5])
+    # chain rule sum(x, axis=1)/3 => grad = [all 1/3]
+    np.testing.assert_allclose(x.grad, [[1 / 3, 1 / 3, 1 / 3], [1 / 3, 1 / 3, 1 / 3]])

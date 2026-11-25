@@ -137,6 +137,7 @@ The gradient goes back **along the axis that was summed**.
 - Make sure a test fails **for the right reason**. A 2-D `(3,2) @ (3,2)` "unsupported shape" test passed because NumPy raised its own error, not ours.
 - Check error messages with `pytest.raises(ValueError, match="...")` (it is a regex search).
 - Hand-check one small case before trusting a big one.
+- Gradcheck only compares backward with **your own forward**. A `mean(axis=0)` that divides by the wrong `N` still passes it. Hand values on `out.data` catch that.
 - A green suite says nothing about arguments no test passes: an inverted `keepdims` condition in `sum` went unnoticed because every test used the defaults. Parametrize over the options.
 
 ---

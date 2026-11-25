@@ -206,6 +206,25 @@ class Tensor:
         out._backward = _backward
         return out
 
+    def mean(self, axis: int | None = None, keepdims: bool = False) -> Tensor:
+        """In mean we divide sum by number of elements the contibuted to that sum, n.
+        When axis is not given, then n is simply number of elements.
+        When axis is given we need to consider N as number of elements that contibuted
+        to sum of that particular element.
+        Example 1: a = [1, 2, 3], [4, 5, 6] axis=0
+        sum = [1+4, 2+5, 3+6] N = 2
+        Example 2:a = [1, 2, 3], [4, 5, 6] axis=1
+        sum = [1+2+3, 4+5+6] N = 3
+        Formula then is: N = size of a/size of out
+        Example 1      : N = 6        / 3          2
+        Example 2      : N = 6        / 2          3
+        """
+        out = self.sum(axis, keepdims)
+        n = self.data.size / out.data.size
+        out = out / n
+        out._op = "mean"
+        return out
+
 
 def _coerce(other: float | int | np.ndarray | Tensor) -> Tensor | NotImplementedType:
     if isinstance(other, Tensor):

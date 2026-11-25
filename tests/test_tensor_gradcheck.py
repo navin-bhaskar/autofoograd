@@ -155,3 +155,15 @@ def test_sum_axis_gradcheck(axis, keepdims):
     a = rng.uniform(0.5, 5.0, size=(2, 3))
 
     assert tensor_gradcheck(summ_sqr, [a])
+
+
+@pytest.mark.parametrize("method", ["sum", "mean"])
+@pytest.mark.parametrize("axis", [None, 0, 1, -1])
+@pytest.mark.parametrize("keepdims", [False, True])
+def test_reduction_gradcheck(method, axis, keepdims):
+    def mean_sum(xs):
+        return getattr(xs[0], method)(axis, keepdims) ** 2
+
+    rng = np.random.default_rng(0)
+    a = rng.uniform(0.55, 5.55, size=(2, 3))
+    assert tensor_gradcheck(mean_sum, [a])
