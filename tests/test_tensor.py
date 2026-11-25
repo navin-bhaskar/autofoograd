@@ -376,3 +376,35 @@ def test_tensor_mean_axis_1():
     np.testing.assert_allclose(y.data, [2, 5])
     # chain rule sum(x, axis=1)/3 => grad = [all 1/3]
     np.testing.assert_allclose(x.grad, [[1 / 3, 1 / 3, 1 / 3], [1 / 3, 1 / 3, 1 / 3]])
+
+
+def test_tensor_reshape():
+    x = Tensor([[1, 2, 3], [4, 5, 6]])
+    y = x.reshape(3, 2)
+    a_data = [[10, 20], [30, 40], [50, 60]]
+    z = y * np.array(a_data)
+    z.backward()
+
+    assert y._op == "reshape"
+    np.testing.assert_array_equal(y.data, [[1, 2], [3, 4], [5, 6]])
+    # y's grad should be a_data -> [[10, 20], [30, 40]....] by chain rule
+    np.testing.assert_array_equal(y.grad, a_data)
+    # x has been reshaped to make y so the gradient on x should also
+    # be reshaped gradient of y
+    np.testing.assert_array_equal(x.grad, [[10, 20, 30], [40, 50, 60]])
+
+
+def test_tensor_reshape_with_minus_1():
+    x = Tensor([[1, 2, 3], [4, 5, 6]])
+    y = x.reshape(-1)
+    y.backward()
+
+    assert y.shape == (6,)
+    assert x.grad.shape == (2, 3)
+
+
+def test_tensor_reshape_bad_value():
+    x = Tensor([[1, 2, 3], [4, 5, 6]])
+
+    with pytest.raises(ValueError):
+        _ = x.reshape(4, 2)

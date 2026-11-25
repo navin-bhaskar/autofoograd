@@ -225,6 +225,17 @@ class Tensor:
         out._op = "mean"
         return out
 
+    def reshape(self, *newshape: int) -> Tensor:
+        """Reshapes the tensor. The gradient is also a reshped transfer to the node above
+        out"""
+        out = Tensor(self.data.reshape(newshape), (self,), "reshape")
+
+        def _backward() -> None:
+            self.grad += out.grad.reshape(self.shape)
+
+        out._backward = _backward
+        return out
+
 
 def _coerce(other: float | int | np.ndarray | Tensor) -> Tensor | NotImplementedType:
     if isinstance(other, Tensor):

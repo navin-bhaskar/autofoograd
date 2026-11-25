@@ -118,6 +118,17 @@ The gradient goes back **along the axis that was summed**.
 
 ---
 
+### Reshape
+
+Same numbers, same reading order (row by row), different row breaks. The backward is a reshape back: `x.grad += out.grad.reshape(x.shape)`.
+
+- Use `x.shape`, not the `reshape` argument: the argument is the *output* shape (and may be `-1`).
+- `.T` can have the right shape and still be wrong: it **changes the reading order**, so gradients land in the wrong slots.
+- Test with a **distinct gradient per slot** (weights `10..60`, or `** 2`). With an all-ones gradient a `.T` backward passes.
+- Use `x` twice to catch `=` instead of `+=`, e.g. `x.reshape(-1) * x.reshape(-1)`.
+
+---
+
 ## 7. Gradcheck
 
 - Central difference: `(f(x + eps) - f(x - eps)) / (2 * eps)`, one element at a time.

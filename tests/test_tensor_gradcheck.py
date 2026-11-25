@@ -167,3 +167,22 @@ def test_reduction_gradcheck(method, axis, keepdims):
     rng = np.random.default_rng(0)
     a = rng.uniform(0.55, 5.55, size=(2, 3))
     assert tensor_gradcheck(mean_sum, [a])
+
+
+@pytest.mark.parametrize("target_shape", [(3, 2), (6,), (1, 6), (-1,)])
+def test_reshape(target_shape):
+    def reshape_pow(xs):
+        return xs[0].reshape(*target_shape) ** 2
+
+    rng = np.random.default_rng(0)
+    a = rng.uniform(0.55, 2.0, size=(2, 3))
+    assert tensor_gradcheck(reshape_pow, [a])
+
+
+def test_reshape_reused_input():
+    def f(xs):
+        return xs[0].reshape(-1) * xs[0].reshape(-1)
+
+    rng = np.random.default_rng(0)
+    a = rng.uniform(0.55, 2.0, size=(2, 3))
+    assert tensor_gradcheck(f, [a])
